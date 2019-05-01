@@ -1,0 +1,202 @@
+<html>
+
+<link rel="stylesheet" href="css/bootstrap.min.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+<!-- CSS Styles -->
+<style>
+  .text {border: 0px; padding: 5px; margin-bottom: 10px; margin-top: 30px; font-size: 30px;}
+  .speech {border: 1px solid #DDD; width: 400px; margin: 0px; padding:5px; padding-left: 10px;}
+  .speech input {border: 0; width: 240px; display: inline-block; height: 40px;}
+  .speech img {float: right; width: 40px }
+  .speech {border: 1px solid #DDD; width: 400px; margin: 0px; padding:5px; padding-left: 10px;}
+  .separador {float: right; width: 100% }
+</style>
+
+<div class="jumbotron text-center">
+  <h1>Mirtha</h1>
+  <p>Sitetizador de voz AA2K</p> 
+</div>
+
+<div class="container">
+
+  <h2>Estado de vuelos</h2>
+  <div class="panel panel-default">
+    
+    <div class="panel-body">
+      
+      <div class="form-group">
+        <label for="texto-speech">Email address:</label>
+        <input id="texto-speech" type="text" class="form-control" name="q" id="transcript" placeholder="Ejemplo: Buscar vuelo 'AR1234'" />
+      </div>
+      
+      <button type="button" class="btn btn-primary" onclick="startDictation()">Hablar</button>
+    
+    </div>
+  </div>
+</div>
+
+
+<!-- HTML5 Reconocimiento de voz para vuelos locos -->
+<script>
+
+  speak('Hola ¿como estás?. Mi nombre es Mirta.');
+  
+  // say a message
+  function speak(text, callback) {
+      var u = new SpeechSynthesisUtterance();
+      u.text = text;
+      u.lang = 'es-US';
+
+      u.onend = function () {
+          if (callback) {
+              callback();
+          }
+      };
+  
+      u.onerror = function (e) {
+          if (callback) {
+              callback(e);
+          }
+      };
+  
+      speechSynthesis.speak(u);
+  }
+  
+  function startDictation() {
+    console.log("entro al metodo de startDictation");
+
+    if (window.hasOwnProperty('webkitSpeechRecognition')) {
+      
+      console.log("El navegador, dispone de webkitSpeechRecognition");
+      var recognition = new webkitSpeechRecognition();
+
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.lang = "en-US";
+      recognition.start(); 
+
+      recognition.onresult = function(e) {
+        var nahueVoice = e.results[0][0].transcript.toLowerCase();
+        recognition.stop();
+
+        if(nahueVoice.includes("buscar vuelo") || nahueVoice.includes("buscar un vuelo"))
+        {
+          document.getElementById('transcript').value = nahueVoice.replace("buscar un vuelo", "").replace("buscar vuelo", "").replace(/ /g,'').toUpperCase();
+          speak("Buscando el vuelo " + document.getElementById('transcript').value, buscar);
+        }
+        else
+        {
+          speak("no entendi el comando: " + nahueVoice);
+          document.getElementById('transcript').value = "";
+        }
+        
+      };
+
+      recognition.onerror = function(e) {
+        recognition.stop();
+        console.log(e);
+      }
+
+    }
+  }
+
+function buscar(){
+  //document.getElementById('labnol').submit();
+  var vuelo = document.getElementById('transcript').value;
+  var n = vuelo.length;
+  console.log(n);
+
+  if(n > 4)
+  {
+    vuelos(vuelo.substring(0, 2), vuelo.substring(2));
+  }
+  else
+    speak("Lo siento, esa es muy poca información para la búsqueda.");
+}
+
+function setHeader(xhr) {
+  xhr.setRequestHeader('key', '');
+}
+
+function vuelos(v_iata, v_flight)
+{
+  $.ajax({
+              url : 'http://api.aa2000.com.ar/api/Vuelos?dairline=' + v_iata + '&flight=' + v_flight,
+              type : 'GET',
+              async: false,
+              crossDomain: true,
+              dataType : 'json',
+              //processData: true,
+              contentType : 'application/json',
+              success : function(data) {
+                console.log(data);
+                if(data[0].mov == "D")
+                  speak( "El vuelo " + data[0].nro + ", de " +  data[0].aerolinea.toLowerCase() + ", con destino " + data[0].destorig.replace(">", " vía ") + ", se encuentra en estado " + data[0].estes + ".")
+                else
+                  speak( "El vuelo " + data[0].nro + ", de " +  data[0].aerolinea.toLowerCase() + ", con origen " + data[0].destorig.replace(">", " vía ") + ", se encuentra en estado " + data[0].estes + ".")
+                //document.getElementById("resultados").value = data[0].estes;
+              },
+              error : function() {
+                console.log('error');
+              },
+              beforeSend : setHeader
+  });
+}
+
+
+function setHeaderTest(xhr) {
+  xhr.setRequestHeader('key', '');
+}
+
+function test()
+{
+  $.ajax({
+              url : 'https://localhost/api/location/v2/clients/count',
+              type : 'GET',
+              async: false,
+              crossDomain: true,
+              dataType : 'json',
+              //processData: true,
+              contentType : 'application/json',
+              success : function(data) {
+                console.log(data);
+                alert(data.count);
+                document.getElementById("resultados").value = data;
+              },
+              error : function() {
+                console.log('error');
+              }
+              ,
+              beforeSend : setHeaderTest
+  });
+}
+
+
+const getVoices = () => {
+  return new Promise(resolve => {
+    let voices = speechSynthesis.getVoices()
+    if (voices.length) {
+      resolve(voices)
+      return
+    }
+    speechSynthesis.onvoiceschanged = () => {
+      voices = speechSynthesis.getVoices()
+      resolve(voices)
+    }
+  })
+}
+
+const printVoicesList = async () => {
+  ;(await getVoices()).forEach(voice => {
+    console.log(voice.name, voice.lang)
+  })
+}
+
+printVoicesList()
+
+
+
+</script>
+</html>
